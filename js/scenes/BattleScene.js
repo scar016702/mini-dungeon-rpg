@@ -269,12 +269,19 @@ export class BattleScene extends Phaser.Scene {
         this.battleOver = true;
         this.addLog('쓰러졌다...');
         this.delay(1500, () => {
-            this.player.hp = Math.floor(this.player.maxHp / 2);
-            this.player.gold = Math.floor(this.player.gold / 2);
-            this.cameras.main.fadeOut(800, 0, 0, 0);
-            this.cameras.main.once('camerafadeoutcomplete', () => {
-                this.scene.start('TownScene');
-            });
+            if (this.monster.isBoss) {
+                this.cameras.main.fadeOut(1000, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => {
+                    this.scene.start('GameOverScene');
+                });
+            } else {
+                this.player.hp = Math.floor(this.player.maxHp / 2);
+                this.player.gold = Math.floor(this.player.gold / 2);
+                this.cameras.main.fadeOut(800, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => {
+                    this.scene.start('TownScene');
+                });
+            }
         });
     }
 

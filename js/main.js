@@ -11,6 +11,7 @@ import { TownScene }    from './scenes/TownScene.js';
 import { DungeonScene } from './scenes/DungeonScene.js';
 import { BattleScene }  from './scenes/BattleScene.js';
 import { EndingScene }  from './scenes/EndingScene.js';
+import { GameOverScene } from './scenes/GameOverScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -42,6 +43,7 @@ const config = {
         DungeonScene,
         BattleScene,
         EndingScene,
+        GameOverScene,
     ],
 };
 

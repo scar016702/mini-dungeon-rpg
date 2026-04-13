@@ -25,11 +25,10 @@ export class BattleScene extends Phaser.Scene {
         this.monster = { ...monsterData, currentHp: monsterData.hp };
         this.player = GameState.player;
         this.battleOver = false;
-        this.playerTurn = true;
-        this.isDefending = false;
+        this.playerTurn = !monsterData.isBoss; // 보스전은 연출 후 턴 시작
 
         // --- 몬스터 표시 영역 (상단) ---
-        this.drawMonsterSprite(W / 2, 80, monsterData);
+        this.monsterGfx = this.drawMonsterSprite(W / 2, 80, monsterData);
 
         this.monsterNameText = this.add.text(W / 2, 130, monsterData.name, {
             fontSize: '14px', fontFamily: 'monospace', color: '#ff8888',
@@ -84,9 +83,48 @@ export class BattleScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-SPACE', () => this.onMenuSelect(this.selectedMenu));
 
         this.updateDisplay();
-        this.addLog(`${monsterData.name}이(가) 나타났다!`);
 
-        this.cameras.main.fadeIn(300, 0, 0, 0);
+        if (monsterData.isBoss) {
+            // 보스 등장 연출
+            this.monsterGfx.setAlpha(0);
+            this.monsterNameText.setAlpha(0);
+            this.monsterHpText.setAlpha(0);
+
+            this.cameras.main.fadeIn(500, 0, 0, 0);
+            this.addLog('어두운 기운이 감돌고 있다...');
+
+            this.delay(1200, () => {
+                this.cameras.main.shake(500, 0.02);
+                this.cameras.main.flash(300, 128, 0, 0);
+                this.addLog(`${monsterData.name}이(가) 나타났다!`);
+
+                // Graphics와 Text를 각각 트윈
+                this.tweens.add({
+                    targets: this.monsterGfx,
+                    alpha: 1,
+                    duration: 800,
+                    ease: 'Power2',
+                });
+                this.tweens.add({
+                    targets: this.monsterNameText,
+                    alpha: 1,
+                    duration: 800,
+                    ease: 'Power2',
+                });
+                this.tweens.add({
+                    targets: this.monsterHpText,
+                    alpha: 1,
+                    duration: 800,
+                    ease: 'Power2',
+                    onComplete: () => {
+                        this.playerTurn = true;
+                    },
+                });
+            });
+        } else {
+            this.addLog(`${monsterData.name}이(가) 나타났다!`);
+            this.cameras.main.fadeIn(300, 0, 0, 0);
+        }
     }
 
     /** setTimeout 래퍼 — 씬 전환 후에는 콜백 실행 안 함 */
@@ -112,6 +150,7 @@ export class BattleScene extends Phaser.Scene {
             g.lineStyle(2, 0xff4444);
             g.strokeRect(x - size / 2 - 3, y - size / 2 - 3, size + 6, size + 6);
         }
+        return g;
     }
 
     moveMenu(dir) {
@@ -199,12 +238,6 @@ export class BattleScene extends Phaser.Scene {
         }
     }
 
-    doPlayerDefend() {
-        this.isDefending = true;
-        this.addLog('방어 태세! 받는 데미지 절반.');
-        this.delay(400, () => this.doMonsterTurn());
-    }
-
     doFlee() {
         const chance = this.monster.isBoss ? 0 : 0.5;
         if (Math.random() < chance) {
@@ -220,11 +253,7 @@ export class BattleScene extends Phaser.Scene {
     doMonsterTurn() {
         if (this.battleOver) return;
 
-        let dmg = this.calcDamage(this.monster.atk, this.player.def);
-        if (this.isDefending) {
-            dmg = Math.max(1, Math.floor(dmg / 2));
-            this.isDefending = false;
-        }
+        const dmg = this.calcDamage(this.monster.atk, this.player.def);
         this.player.hp = Math.max(0, this.player.hp - dmg);
         this.addLog(`${this.monster.name}의 공격! ${dmg} 데미지!`);
         this.cameras.main.flash(100, 255, 0, 0, true);
@@ -246,9 +275,12 @@ export class BattleScene extends Phaser.Scene {
         this.player.gold += goldGain;
         this.addLog(`+${expGain} EXP, +${goldGain} Gold`);
 
+        const prevLevel = this.player.level;
         const leveled = GameState.gainExp(expGain);
         if (leveled) {
-            this.addLog(`레벨 업! Lv.${this.player.level}!`);
+            this.cameras.main.flash(500, 255, 255, 100);
+            this.addLog(`★ 레벨 업! Lv.${this.player.level}! ★`);
+            this.addLog(`HP+15 MP+5 ATK+3 DEF+2 전회복!`);
         }
         this.updateDisplay();
 
@@ -279,7 +311,7 @@ export class BattleScene extends Phaser.Scene {
                 this.player.gold = Math.floor(this.player.gold / 2);
                 this.cameras.main.fadeOut(800, 0, 0, 0);
                 this.cameras.main.once('camerafadeoutcomplete', () => {
-                    this.scene.start('TownScene');
+                    this.scene.start('TownScene', { defeated: true });
                 });
             }
         });

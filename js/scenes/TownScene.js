@@ -14,6 +14,10 @@ export class TownScene extends Phaser.Scene {
         super('TownScene');
     }
 
+    init(data) {
+        this.defeatedReturn = data && data.defeated;
+    }
+
     create() {
         const TILE = 16;
         this.TILE = TILE;
@@ -183,6 +187,26 @@ export class TownScene extends Phaser.Scene {
 
         // 페이드인
         this.cameras.main.fadeIn(500, 0, 0, 0);
+
+        // 패배 복귀 메시지
+        if (this.defeatedReturn) {
+            const { width, height } = this.scale;
+            const msg = this.add.text(width / 2, height / 2 - 20,
+                '의식을 잃고 마을로 돌아왔다...\nHP와 골드가 절반으로 줄었다.', {
+                    fontSize: '10px', fontFamily: 'monospace', color: '#ff8888',
+                    align: 'center', backgroundColor: '#000000cc',
+                    padding: { x: 12, y: 8 }, lineSpacing: 4,
+                }).setOrigin(0.5).setDepth(30);
+
+            this.time.delayedCall(2500, () => {
+                this.tweens.add({
+                    targets: msg,
+                    alpha: 0,
+                    duration: 500,
+                    onComplete: () => msg.destroy(),
+                });
+            });
+        }
     }
 
     updateHud() {

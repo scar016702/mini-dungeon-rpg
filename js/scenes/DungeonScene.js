@@ -5,6 +5,8 @@
  */
 import { MONSTERS, DUNGEON_ENCOUNTERS } from '../data/monsters.js';
 import { GameState } from '../data/gameState.js';
+import { DIALOGS } from '../data/dialogs.js';
+import { DialogSystem } from '../systems/DialogSystem.js';
 
 export class DungeonScene extends Phaser.Scene {
     constructor() {
@@ -79,6 +81,19 @@ export class DungeonScene extends Phaser.Scene {
         this.MOVE_INTERVAL = 150;
         this.inBattle = false;
 
+        // 보스방 진입 확인 대화 시스템
+        this.dialog = new DialogSystem(this, (action) => {
+            if (action === 'enterBoss') {
+                this.inBattle = true;
+                GameState.dungeonPos = { ...this.playerTile };
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => {
+                    this.scene.start('BattleScene', { monsterKey: 'darkKnight' });
+                });
+            }
+        });
+        this.spaceKey = this.input.keyboard.addKey('SPACE');
+
         // HUD
         this.hudText = this.add.text(2, 2, '', {
             fontSize: '8px', fontFamily: 'monospace', color: '#ffffff',
@@ -110,6 +125,13 @@ export class DungeonScene extends Phaser.Scene {
 
     update(time) {
         if (this.inBattle) return;
+
+        // 대화 중이면 대화만 업데이트
+        if (this.dialog.isActive) {
+            this.dialog.update();
+            return;
+        }
+
         if (time < this.moveDelay) return;
 
         const TILE = this.TILE;
@@ -134,14 +156,21 @@ export class DungeonScene extends Phaser.Scene {
         this.moveDelay = time + this.MOVE_INTERVAL;
         this.stepCount++;
 
-        // 보스방 입구 체크
+        // 보스방 입구 체크 — 확인 대화 표시
         if (this.bossDoor && newRow === this.bossDoor.row && newCol === this.bossDoor.col) {
-            this.inBattle = true;
-            GameState.dungeonPos = { col: newCol, row: newRow };
-            this.cameras.main.fadeOut(400, 0, 0, 0);
-            this.cameras.main.once('camerafadeoutcomplete', () => {
-                this.scene.start('BattleScene', { monsterKey: 'darkKnight' });
-            });
+            const bossConfirm = {
+                pages: [
+                    { text: '이 문 너머에서 강력한 기운이 느껴진다...' },
+                    {
+                        text: '보스방에 입장하시겠습니까?',
+                        choices: [
+                            { label: '입장한다', action: 'enterBoss' },
+                            { label: '아직 준비가 안 됐다', action: null },
+                        ],
+                    },
+                ],
+            };
+            this.dialog.start(bossConfirm, '???');
             return;
         }
 
